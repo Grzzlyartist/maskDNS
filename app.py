@@ -14,26 +14,44 @@ import requests
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['DATABASE'] = os.environ.get('DATABASE_PATH', 'domains.db')
+
+# Ensure database directory exists
+db_path = os.environ.get('DATABASE_PATH', 'domains.db')
+db_dir = os.path.dirname(db_path)
+if db_dir and not os.path.exists(db_dir):
+    os.makedirs(db_dir, exist_ok=True)
+
+app.config['DATABASE'] = db_path
 app.config['ADMIN_PASSWORD'] = os.environ.get('ADMIN_PASSWORD', 'admin123')
 app.config['TIMEOUT'] = int(os.environ.get('TIMEOUT', '30'))
 
 # Database initialization
 def init_db():
     """Initialize SQLite database with required tables"""
-    conn = sqlite3.connect(app.config['DATABASE'])
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS domain_mappings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            custom_domain TEXT UNIQUE NOT NULL,
-            target_url TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            clicks INTEGER DEFAULT 0,
-            is_active BOOLEAN DEFAULT 1
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    # Ensure database directory exists
+    db_path = app.config['DATABASE']
+    db_dir = os.path.dirname(db_path)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS domain_mappings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                custom_domain TEXT UNIQUE NOT NULL,
+                target_url TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                clicks INTEGER DEFAULT 0,
+                is_active BOOLEAN DEFAULT 1
+            )
+        ''')
+        conn.commit()
+        conn.close()
+        print(f"Database initialized successfully at {db_path}")
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        raise
 
 def get_db():
     """Get database connection"""
