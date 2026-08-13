@@ -202,11 +202,92 @@ def view_stats(domain):
         return render_template('stats.html', mapping=dict(mapping))
     return render_template('error.html', message='Domain not found'), 404
 
+@app.route('/m/<masked_id>')
+@app.route('/m/<masked_id>/<path:subpath>')
+def masked_proxy(masked_id, subpath=''):
+    """Proxy handler for masked domains - no DNS required"""
+    # Look up domain mapping by custom_domain (now used as masked ID)
+    conn = get_db()
+    mapping = conn.execute(
+        'SELECT * FROM domain_mappings WHERE custom_domain = ? AND is_active = 1',
+        (masked_id,)
+    ).fetchone()
+    conn.close()
+    
+    if not mapping:
+        return render_template('not_configured.html', domain=masked_id), 404
+    
+    # Track click
+    track_click(mapping['id'])
+    
+    # Build target URL
+    target_url = mapping['target_url'].rstrip('/')
+    if subpath:
+        target_url = f"{target_url}/{subpath}"
+    
+    # Add query parameters
+    if request.query_string:
+        target_url = f"{target_url}?{request.query_string.decode()}"
+    
+    try:
+        # Prepare headers
+        headers = {
+            'User-Agent': request.headers.get('User-Agent', 'MaskDNS/1.0'),
+            'Accept': request.headers.get('Accept', '*/*'),
+            'Accept-Language': request.headers.get('Accept-Language', 'en-US,en;q=0.9'),
+        }
+        
+        # Fetch content from target
+        response = requests.request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            data=request.get_data(),
+            cookies=request.cookies,
+            allow_redirects=False,
+            timeout=app.config['TIMEOUT'],
+            stream=True
+        )
+        
+        # Handle redirects
+        if response.status_code in [301, 302, 303, 307, 308]:
+            location = response.headers.get('Location', '')
+            if location.startswith('/'):
+                # Relative redirect - keep on our domain
+                return redirect(f"/m/{masked_id}{location}", code=response.status_code)
+            else:
+                # Absolute redirect - proxy it
+                return redirect(location, code=response.status_code)
+        
+        # Build response
+        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+        response_headers = [
+            (name, value) for (name, value) in response.raw.headers.items()
+            if name.lower() not in excluded_headers
+        ]
+        
+        return Response(
+            response.content,
+            status=response.status_code,
+            headers=response_headers
+        )
+        
+    except requests.exceptions.Timeout:
+        return render_template('error.html', message='Target URL timeout'), 504
+    except requests.exceptions.RequestException as e:
+        return render_template('error.html', message=f'Error fetching target: {str(e)}'), 502
+    except Exception as e:
+        return render_template('error.html', message='Internal server error'), 500
+
 @app.route('/<path:path>')
 @app.route('/proxy', defaults={'path': ''})
 def proxy_handler(path):
-    """Main proxy handler - fetches content from target URL"""
+    """Main proxy handler - fetches content from target URL (DNS-based)"""
     host = request.headers.get('Host', request.host).split(':')[0]
+    
+    # Skip if accessing via path-based masking
+    if path.startswith('m/'):
+        return not_found(None)
     
     # Look up domain mapping
     conn = get_db()

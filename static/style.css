@@ -112,6 +112,21 @@ body {
     font-size: 14px;
 }
 
+.btn-xs {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.btn-copy {
+    background: #48bb78;
+    color: white;
+    margin-left: 8px;
+}
+
+.btn-copy:hover {
+    background: #38a169;
+}
+
 .btn-block {
     width: 100%;
     display: block;

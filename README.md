@@ -1,16 +1,28 @@
 # 🔗 MaskDNS - Free Domain Masking Service
 
-A complete Python web application that masks free subdomains (Vercel, Netlify, Heroku, etc.) behind custom domains. Built with Flask, SQLite, and designed for 100% free deployment.
+A complete Python web application that masks URLs behind custom-looking paths. Built with Flask, SQLite, and designed for 100% free deployment.
 
 ## 🚀 Features
 
-- **Domain Masking**: Hide free subdomains behind branded domains
+- **URL Masking**: Hide URLs behind custom-looking masked paths (no DNS setup required!)
 - **Admin Panel**: Password-protected CRUD interface
 - **Click Tracking**: Monitor traffic and analytics
 - **Active/Inactive Toggle**: Enable/disable mappings instantly
 - **Responsive UI**: Works on desktop, tablet, and mobile
 - **Error Handling**: Proper error pages and timeout handling
-- **100% Free**: No paid services required
+- **100% Free**: No paid services or DNS setup required
+
+## 💡 How It Works
+
+1. Add a mapping in the admin panel with a masked ID and target URL
+2. Get a generated URL like: `https://your-app.onrender.com/m/mybrand`
+3. Share that URL - visitors see the target content without seeing the real URL
+4. No DNS configuration needed!
+
+**Example**:
+- Masked URL: `https://your-app.onrender.com/m/coolapp`
+- Target URL: `https://myproject-123.vercel.app`
+- Visitors to the masked URL see your Vercel app content!
 
 ## 📦 Installation
 
