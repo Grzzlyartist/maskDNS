@@ -55,8 +55,23 @@ def init_db():
 
 def get_db():
     """Get database connection"""
-    conn = sqlite3.connect(app.config['DATABASE'])
+    # Ensure database is initialized
+    db_path = app.config['DATABASE']
+    if not os.path.exists(db_path):
+        init_db()
+    
+    conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
+    
+    # Verify table exists, create if missing
+    try:
+        conn.execute("SELECT 1 FROM domain_mappings LIMIT 1")
+    except sqlite3.OperationalError:
+        conn.close()
+        init_db()
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+    
     return conn
 
 def login_required(f):
