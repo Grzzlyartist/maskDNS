@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaskDNS - Domain Masking Service</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="hero">
+            <div class="logo">
+                <i class="fas fa-link"></i>
+                <h1>MaskDNS</h1>
+            </div>
+            <p class="subtitle">Professional domain masking for your applications</p>
+            <a href="{{ url_for('admin_login') }}" class="btn btn-primary">
+                <i class="fas fa-user-shield"></i> Admin Panel
+            </a>
+        </header>
+
+        <section class="features">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h3>Fast & Reliable</h3>
+                <p>Lightning-fast proxy with zero configuration. Deploy in minutes.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Secure</h3>
+                <p>SSL/HTTPS ready with password-protected administration.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>Analytics</h3>
+                <p>Monitor traffic and track performance metrics in real-time.</p>
+            </div>
+        </section>
+
+        <section class="example">
+            <h2>How It Works</h2>
+            <div class="example-flow">
+                <div class="example-step">
+                    <div class="example-label">Your Free Domain</div>
+                    <div class="example-code">
+                        <i class="fas fa-server"></i>
+                        <code>myapp.vercel.app</code>
+                    </div>
+                </div>
+                <div class="arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                <div class="example-step">
+                    <div class="example-label">Custom Domain</div>
+                    <div class="example-code">
+                        <i class="fas fa-globe"></i>
+                        <code>app.mybrand.com</code>
+                    </div>
+                </div>
+                <div class="arrow">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+                <div class="example-step">
+                    <div class="example-label">Visitors See</div>
+                    <div class="example-code success">
+                        <i class="fas fa-check-circle"></i>
+                        <code>app.mybrand.com</code>
+                    </div>
+                </div>
+            </div>
+            <div class="example-description">
+                <div class="step-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Configure DNS to point to this server</span>
+                </div>
+                <div class="step-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create mapping in admin panel</span>
+                </div>
+                <div class="step-item">
+                    <i class="fas fa-check"></i>
+                    <span>Your site appears under branded domain</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="use-cases">
+            <h2>Use Cases</h2>
+            <ul>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span>Mask Vercel, Netlify, and Heroku deployments</span>
+                </li>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span>Professional branding for free-tier applications</span>
+                </li>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span>Testing and staging environments</span>
+                </li>
+                <li>
+                    <i class="fas fa-check"></i>
+                    <span>Portfolio and demo projects</span>
+                </li>
+            </ul>
+        </section>
+
+        <footer>
+            <div class="footer-content">
+                <p>Open Source • Self-Hosted • Free Forever</p>
+                <a href="{{ url_for('admin_login') }}" class="footer-link">
+                    <i class="fas fa-sign-in-alt"></i> Admin Login
+                </a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

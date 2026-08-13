@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stats - {{ mapping.custom_domain }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-chart-line"></i> Domain Statistics</h1>
+        </header>
+
+        <div class="card">
+            <h2>{{ mapping.custom_domain }}</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <i class="fas fa-link"></i> Target URL
+                    </div>
+                    <div class="stat-value"><code>{{ mapping.target_url }}</code></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <i class="fas fa-mouse-pointer"></i> Total Clicks
+                    </div>
+                    <div class="stat-value large">{{ mapping.clicks }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <i class="fas fa-power-off"></i> Status
+                    </div>
+                    <div class="stat-value">
+                        {% if mapping.is_active %}
+                        <span class="badge badge-success">
+                            <i class="fas fa-check-circle"></i> Active
+                        </span>
+                        {% else %}
+                        <span class="badge badge-danger">
+                            <i class="fas fa-times-circle"></i> Inactive
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">
+                        <i class="fas fa-calendar-alt"></i> Created
+                    </div>
+                    <div class="stat-value">{{ mapping.created_at }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions-footer">
+            <a href="{{ url_for('admin_panel') }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> Back to Admin
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                <i class="fas fa-home"></i> Home
+            </a>
+        </div>
+    </div>
+</body>
+</html>
