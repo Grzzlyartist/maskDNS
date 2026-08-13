@@ -258,6 +258,8 @@ def server_error(e):
     """500 error handler"""
     return render_template('error.html', message='Internal server error'), 500
 
+# Initialize database on import (for gunicorn)
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     app.run(debug=os.environ.get('DEBUG', 'False') == 'True', host='0.0.0.0', port=5000)
