@@ -253,11 +253,14 @@ def masked_proxy(masked_id, subpath=''):
         if response.status_code in [301, 302, 303, 307, 308]:
             location = response.headers.get('Location', '')
             if location.startswith('/'):
-                # Relative redirect - keep on our domain
+                # Relative redirect - rewrite to stay on our proxy path
                 return redirect(f"/m/{masked_id}{location}", code=response.status_code)
             else:
-                # Absolute redirect - proxy it
-                return redirect(location, code=response.status_code)
+                # Absolute redirect - follow it internally instead of leaking the real URL
+                parsed = urlparse(location)
+                new_path = parsed.path.lstrip('/')
+                qs = f"?{parsed.query}" if parsed.query else ""
+                return redirect(f"/m/{masked_id}/{new_path}{qs}", code=response.status_code)
         
         # Build response
         excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
@@ -284,10 +287,6 @@ def masked_proxy(masked_id, subpath=''):
 def proxy_handler(path):
     """Main proxy handler - fetches content from target URL (DNS-based)"""
     host = request.headers.get('Host', request.host).split(':')[0]
-    
-    # Skip if accessing via path-based masking
-    if path.startswith('m/'):
-        return not_found(None)
     
     # Look up domain mapping
     conn = get_db()

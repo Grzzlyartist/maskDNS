@@ -1,300 +1,118 @@
-# 🔗 MaskDNS - Free Domain Masking Service
+# MaskDNS
 
-A complete Python web application that masks URLs behind custom-looking paths. Built with Flask, SQLite, and designed for 100% free deployment.
+A Flask-based reverse proxy that masks URLs behind custom domains or path-based shortcuts. Built with Flask and SQLite.
 
-## 🚀 Features
+## How It Works
 
-- **URL Masking**: Hide URLs behind custom-looking masked paths (no DNS setup required!)
-- **Admin Panel**: Password-protected CRUD interface
-- **Click Tracking**: Monitor traffic and analytics
-- **Active/Inactive Toggle**: Enable/disable mappings instantly
-- **Responsive UI**: Works on desktop, tablet, and mobile
-- **Error Handling**: Proper error pages and timeout handling
-- **100% Free**: No paid services or DNS setup required
+MaskDNS supports two modes:
 
-## 💡 How It Works
+**DNS-based masking** — Point a custom domain at your server via an A record. Incoming requests are matched by `Host` header and proxied to the configured target URL. Visitors see your custom domain throughout.
 
-1. Add a mapping in the admin panel with a masked ID and target URL
-2. Get a generated URL like: `https://your-app.onrender.com/m/mybrand`
-3. Share that URL - visitors see the target content without seeing the real URL
-4. No DNS configuration needed!
+**Path-based masking** — No DNS required. Access via `/m/<masked-id>` and traffic is proxied to the mapped target. Good for quick sharing or testing.
 
-**Example**:
-- Masked URL: `https://your-app.onrender.com/m/coolapp`
-- Target URL: `https://myproject-123.vercel.app`
-- Visitors to the masked URL see your Vercel app content!
+In both cases, content is fetched server-side and returned transparently, with click tracking on every request.
 
-## 📦 Installation
+## Features
 
-### Local Setup
+- Two proxy modes: DNS-based and path-based (`/m/<id>`)
+- Password-protected admin panel (add, delete, toggle mappings)
+- Per-domain click tracking with a stats page
+- SQLite storage — zero external dependencies
+- CLI tools for DB management via `utils.py`
 
-1. **Clone or download this repository**
+## Quick Start
 
-2. **Install dependencies**:
 ```bash
 pip install -r requirements.txt
-```
-
-3. **Run the application**:
-```bash
 python app.py
 ```
 
-4. **Access the application**:
 - Landing page: `http://localhost:5000`
 - Admin panel: `http://localhost:5000/admin/login`
 - Default password: `admin123`
 
-### Environment Variables
+## Environment Variables
 
-Create a `.env` file or set these environment variables:
+| Variable | Default | Description |
+|---|---|---|
+| `ADMIN_PASSWORD` | `admin123` | Admin panel password |
+| `SECRET_KEY` | `dev-secret-key-...` | Flask session secret |
+| `DATABASE_PATH` | `domains.db` | Path to SQLite database |
+| `TIMEOUT` | `30` | Proxy request timeout (seconds) |
+| `DEBUG` | `False` | Flask debug mode |
 
-```env
-ADMIN_PASSWORD=your-secure-password
-SECRET_KEY=your-flask-secret-key
-DEBUG=False
-DATABASE_PATH=/path/to/domains.db
-TIMEOUT=30
+Copy `.env.example` to `.env` and fill in values before deploying.
+
+## DNS Setup (for DNS-based mode)
+
+Add an A record in your domain's DNS settings:
+
+```
+Type:  A
+Name:  app        (or @ for root)
+Value: YOUR_SERVER_IP
+TTL:   300
 ```
 
-## 🌐 Deployment Guides
+Finding your server IP:
+- Render: listed in the service dashboard
+- Fly.io: `fly ips list`
+- PythonAnywhere: `ping yourusername.pythonanywhere.com`
 
-### Option 1: PythonAnywhere (FREE)
+DNS propagation typically takes 5–30 minutes. Check with `nslookup app.yourdomain.com`.
 
-1. **Create account**: Sign up at [pythonanywhere.com](https://www.pythonanywhere.com)
+Then add the mapping in the admin panel: set custom domain to `app.yourdomain.com` and target URL to your app.
 
-2. **Upload files**:
-   - Go to Files tab
-   - Upload all project files
-   - Or use git: `git clone your-repo-url`
+## Deployment
 
-3. **Install dependencies**:
-   - Open Bash console
-   - Run: `pip3 install --user -r requirements.txt`
+See [DEPLOYMENT.md](DEPLOYMENT.md) for full guides on Render, Fly.io, and PythonAnywhere.
 
-4. **Configure Web App**:
-   - Go to Web tab → Add new web app
-   - Choose Flask
-   - Python version: 3.10
-   - Set source code path: `/home/yourusername/maskdns`
-   - Set working directory: `/home/yourusername/maskdns`
+### Render (quick)
 
-5. **Edit WSGI file** (`/var/www/yourusername_pythonanywhere_com_wsgi.py`):
-```python
-import sys
-path = '/home/yourusername/maskdns'
-if path not in sys.path:
-    sys.path.insert(0, path)
-
-from app import app as application
+```
+Build command:  pip install -r requirements.txt
+Start command:  gunicorn app:app
+Env vars:       ADMIN_PASSWORD, SECRET_KEY
 ```
 
-6. **Set environment variables**:
-   - In Web tab, scroll to Environment Variables
-   - Add: `ADMIN_PASSWORD=your-password`
+### Fly.io (quick)
 
-7. **Initialize database**:
-   - Open Bash console
-   - Navigate to project directory
-   - Run: `python3 -c "from app import init_db; init_db()"`
-
-8. **Reload**: Click green reload button
-
-### Option 2: Render (FREE)
-
-1. **Create account**: Sign up at [render.com](https://render.com)
-
-2. **Create new Web Service**:
-   - Connect your GitHub repository
-   - Or use this repository
-
-3. **Configure service**:
-   - **Name**: maskdns
-   - **Environment**: Python 3
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app`
-
-4. **Add environment variables**:
-   - `ADMIN_PASSWORD` = your-secure-password
-   - `SECRET_KEY` = your-secret-key
-
-5. **Deploy**: Click Create Web Service
-
-### Option 3: Fly.io (FREE)
-
-1. **Install Fly CLI**:
-```bash
-curl -L https://fly.io/install.sh | sh
-```
-
-2. **Login**:
-```bash
-fly auth login
-```
-
-3. **Create `fly.toml`** (already included):
-```toml
-app = "maskdns"
-
-[build]
-  builder = "paketobuildpacks/builder:base"
-
-[env]
-  PORT = "8080"
-
-[[services]]
-  internal_port = 8080
-  protocol = "tcp"
-
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
-
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
-```
-
-4. **Deploy**:
 ```bash
 fly launch
-fly secrets set ADMIN_PASSWORD=your-password
+fly secrets set ADMIN_PASSWORD=your-password SECRET_KEY=your-secret
 fly deploy
 ```
 
-## 🔧 DNS Configuration
+## CLI Tools
 
-### Step 1: Point Domain to Server
+`utils.py` provides command-line access to the database:
 
-Add an **A Record** in your domain's DNS settings:
-
-```
-Type: A
-Name: app (or your subdomain)
-Value: YOUR_SERVER_IP
-TTL: 300
-```
-
-**Examples**:
-- PythonAnywhere: Find IP via `ping yourusername.pythonanywhere.com`
-- Render: Use the IP from your service dashboard
-- Fly.io: Use `fly ips list`
-
-### Step 2: Wait for DNS Propagation
-
-DNS changes take 5-30 minutes to propagate. Check status:
 ```bash
-nslookup app.yourdomain.com
+python utils.py list
+python utils.py add app.example.com https://myapp.vercel.app
+python utils.py delete app.example.com
+python utils.py toggle app.example.com
+python utils.py stats app.example.com
+python utils.py export [filename]
+python utils.py backup [filename]
+python utils.py reset-clicks [domain]
 ```
 
-### Step 3: Add Mapping in Admin Panel
+## API Endpoints
 
-1. Go to admin panel
-2. Enter custom domain: `app.yourdomain.com`
-3. Enter target URL: `https://yourapp.vercel.app`
-4. Click Add Mapping
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/` | Landing page |
+| GET/POST | `/admin/login` | Admin login |
+| GET | `/admin` | Admin panel |
+| POST | `/admin/add` | Add mapping |
+| POST | `/admin/delete/<id>` | Delete mapping |
+| POST | `/admin/toggle/<id>` | Toggle active status |
+| GET | `/stats/<domain>` | Domain stats |
+| GET | `/m/<masked-id>` | Path-based proxy |
+| GET | `/<path>` | DNS-based proxy |
 
-### Step 4: Test
-
-Visit `http://app.yourdomain.com` - you should see content from your target URL!
-
-## 🆓 Free Domain Options
-
-### DuckDNS (Free Subdomain)
-
-1. Sign up at [duckdns.org](https://www.duckdns.org)
-2. Create subdomain: `yourapp.duckdns.org`
-3. Point to your server IP
-4. Use in MaskDNS admin panel
-
-### Freenom (Free TLDs)
-
-1. Sign up at [freenom.com](https://www.freenom.com)
-2. Search for available `.tk`, `.ml`, `.ga`, `.cf`, or `.gq` domains
-3. Register for free (12 months)
-4. Configure DNS in management panel
-
-### Cloudflare (Free SSL)
-
-1. Sign up at [cloudflare.com](https://www.cloudflare.com)
-2. Add your domain
-3. Update nameservers at your registrar
-4. Enable SSL/TLS (Full mode)
-5. Enable "Always Use HTTPS"
-
-## 📊 Usage Example
-
-### Before MaskDNS:
-```
-Your site: https://my-cool-app-xyz123.vercel.app
-Problem: Long, unmemorable, not branded
-```
-
-### After MaskDNS:
-```
-Your custom domain: https://app.mybrand.com
-Benefits: Short, branded, professional
-Visitors see: app.mybrand.com (target URL is hidden!)
-```
-
-### Real-World Flow:
-
-1. **You deploy** to Vercel: `my-portfolio.vercel.app`
-2. **You own domain**: `johndoe.com`
-3. **You setup DNS**: `portfolio.johndoe.com → A → SERVER_IP`
-4. **You add mapping**: `portfolio.johndoe.com` → `my-portfolio.vercel.app`
-5. **Visitors access**: `portfolio.johndoe.com` (sees Vercel content, URL stays the same!)
-
-## 🔒 Security Best Practices
-
-1. **Change default password**:
-   - Set `ADMIN_PASSWORD` environment variable
-   - Use strong, unique password
-
-2. **Use HTTPS**:
-   - Enable SSL on hosting platform
-   - Use Cloudflare for free SSL
-
-3. **Rate limiting** (optional):
-   - Use Cloudflare rate limiting
-   - Or implement Flask-Limiter
-
-4. **Backup database**:
-```bash
-cp domains.db domains.db.backup
-```
-
-5. **Monitor logs**:
-   - Check platform logs regularly
-   - Set up error notifications
-
-## 🛠️ Troubleshooting
-
-### Domain not working?
-
-1. **Check DNS**: `nslookup your-domain.com`
-2. **Check mapping**: Go to admin panel, verify domain is active
-3. **Check target URL**: Make sure target site is accessible
-4. **Check logs**: View application logs on hosting platform
-
-### 404 Error?
-
-- Domain not configured in admin panel
-- Domain spelling mismatch
-- Mapping is inactive
-
-### 502 Bad Gateway?
-
-- Target URL is down or unreachable
-- Timeout (increase `TIMEOUT` env var)
-- Target URL blocks proxy requests
-
-### Admin password not working?
-
-- Check `ADMIN_PASSWORD` environment variable
-- Restart application after changing env vars
-
-## 📝 Database Schema
+## Database Schema
 
 ```sql
 CREATE TABLE domain_mappings (
@@ -307,44 +125,16 @@ CREATE TABLE domain_mappings (
 );
 ```
 
-## 🎯 API Endpoints
+## Troubleshooting
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Landing page |
-| GET | `/admin/login` | Admin login |
-| POST | `/admin/login` | Submit login |
-| GET | `/admin` | Admin panel |
-| POST | `/admin/add` | Create mapping |
-| POST | `/admin/delete/<id>` | Delete mapping |
-| POST | `/admin/toggle/<id>` | Toggle active status |
-| GET | `/stats/<domain>` | View statistics |
-| GET | `/<path:path>` | Proxy handler |
+**Domain shows "not configured"** — Check the admin panel, verify the domain matches exactly (no `http://`, no trailing slash), and that the mapping is active.
 
-## 🤝 Contributing
+**502 Bad Gateway** — Target URL is unreachable or blocking proxy requests. Try opening the target URL directly, or increase `TIMEOUT`.
 
-Feel free to submit issues and pull requests!
+**DNS not resolving** — Propagation can take up to 48h. Check with `nslookup` or [dnschecker.org](https://dnschecker.org).
 
-## 📄 License
+**Admin password rejected** — Confirm `ADMIN_PASSWORD` env var is set and the app has been restarted since the change.
 
-MIT License - feel free to use for any purpose!
+## License
 
-## 🙏 Credits
-
-Built with:
-- Flask - Web framework
-- Requests - HTTP library
-- SQLite - Database
-
-## 📧 Support
-
-For issues or questions:
-- Open an issue on GitHub
-- Check existing issues for solutions
-- Review troubleshooting section above
-
----
-
-**Made with ❤️ for the developer community**
-
-🎉 **Enjoy your free domain masking service!**
+MIT
