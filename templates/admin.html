@@ -20,37 +20,41 @@
         </header>
 
         <div class="card">
-            <h2><i class="fas fa-plus-circle"></i> Add New Domain Mapping</h2>
+            <h2><i class="fas fa-plus-circle"></i> Create New Short Link</h2>
             <form method="POST" action="{{ url_for('add_mapping') }}" class="mapping-form">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="custom_domain">Masked ID</label>
-                        <input type="text" id="custom_domain" name="custom_domain" 
-                               class="form-control" placeholder="mybrand" required>
-                        <small>Enter a short identifier (no spaces, alphanumeric)</small>
+                        <label for="custom_domain">Custom Slug</label>
+                        <div class="slug-input-wrapper">
+                            <span class="slug-prefix">{{ request.host }}/</span>
+                            <input type="text" id="custom_domain" name="custom_domain" 
+                                   class="form-control slug-input" placeholder="mybrand" required
+                                   pattern="[a-zA-Z0-9_-]+" title="Letters, numbers, hyphens and underscores only">
+                        </div>
+                        <small>This is the custom name people will use in the link</small>
                     </div>
                     <div class="form-group">
-                        <label for="target_url">Target URL</label>
+                        <label for="target_url">Destination URL</label>
                         <input type="text" id="target_url" name="target_url" 
                                class="form-control" placeholder="https://myapp.vercel.app" required>
-                        <small>Full URL of your deployment</small>
+                        <small>Where the link will redirect to</small>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-plus"></i> Add Mapping
+                    <i class="fas fa-plus"></i> Create Link
                 </button>
             </form>
         </div>
 
         <div class="card">
-            <h2><i class="fas fa-list"></i> Existing Mappings ({{ mappings|length }})</h2>
+            <h2><i class="fas fa-list"></i> Your Links ({{ mappings|length }})</h2>
             {% if mappings %}
             <div class="table-responsive">
                 <table class="mappings-table">
                     <thead>
                         <tr>
-                            <th>Masked URL</th>
-                            <th>Target URL</th>
+                            <th>Shareable Link</th>
+                            <th>Redirects To</th>
                             <th>Clicks</th>
                             <th>Status</th>
                             <th>Created</th>
@@ -61,11 +65,16 @@
                         {% for mapping in mappings %}
                         <tr>
                             <td>
-                                <code>{{ request.host_url }}m/{{ mapping.custom_domain }}</code>
-                                <button onclick="copyToClipboard('{{ request.host_url }}m/{{ mapping.custom_domain }}')" 
-                                        class="btn btn-xs btn-copy" title="Copy URL">
-                                    <i class="fas fa-copy"></i>
-                                </button>
+                                <div class="share-link-cell">
+                                    <span class="share-label">Share this link</span>
+                                    <div class="share-link-row">
+                                        <code class="share-link">{{ request.host_url }}{{ mapping.custom_domain }}</code>
+                                        <button onclick="copyToClipboard('{{ request.host_url }}{{ mapping.custom_domain }}', this)" 
+                                                class="btn btn-xs btn-copy" title="Copy shareable link">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                </div>
                             </td>
                             <td><code class="target-url">{{ mapping.target_url }}</code></td>
                             <td><span class="badge badge-info">{{ mapping.clicks }}</span></td>
@@ -88,8 +97,14 @@
                                         {% if mapping.is_active %}Deactivate{% else %}Activate{% endif %}
                                     </button>
                                 </form>
+                                <button class="btn btn-sm btn-warning btn-edit" title="Edit"
+                                        data-id="{{ mapping.id }}"
+                                        data-slug="{{ mapping.custom_domain }}"
+                                        data-target="{{ mapping.target_url }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                                 <form method="POST" action="{{ url_for('delete_mapping', mapping_id=mapping.id) }}" 
-                                      style="display:inline;" onsubmit="return confirm('Delete this mapping?');">
+                                      style="display:inline;" onsubmit="return confirm('Delete this link?');">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Delete">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
@@ -106,8 +121,8 @@
             </div>
             {% else %}
             <div class="empty-state">
-                <i class="fas fa-inbox"></i>
-                <p>No domain mappings yet. Add your first mapping above!</p>
+                <i class="fas fa-link"></i>
+                <p>No links yet. Create your first custom link above!</p>
             </div>
             {% endif %}
         </div>
@@ -115,24 +130,75 @@
         <div class="card setup-guide">
             <h2><i class="fas fa-rocket"></i> How It Works</h2>
             <ol>
-                <li>Create a mapping with a unique masked ID and your target URL</li>
-                <li>Share the generated masked URL (no DNS setup needed!)</li>
-                <li>Anyone visiting your masked URL will see the target content</li>
-                <li>Track clicks and manage mappings from this panel</li>
+                <li>Enter a custom slug (e.g. <code>mybrand</code>) and the destination URL</li>
+                <li>Copy the shareable link from the table and send it to anyone</li>
+                <li>When someone clicks your link, they get redirected to the destination</li>
+                <li>Track clicks and manage all your links from this panel</li>
             </ol>
-            <p><strong>Example:</strong></p>
-            <code>{{ request.host_url }}m/mybrand → proxies to → https://myapp.vercel.app</code>
+            <p><strong>Example:</strong> <code>{{ request.host_url }}mybrand</code> → redirects to → <code>https://myapp.vercel.app</code></p>
+            <p class="tip"><i class="fas fa-info-circle"></i> Want to remove <code>{{ request.host }}</code> from your links? Point your own domain here and use that instead.</p>
         </div>
     </div>
     
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+            <h3><i class="fas fa-edit"></i> Edit Link</h3>
+            <form method="POST" id="editForm" class="mapping-form">
+                <div class="form-group">
+                    <label>Custom Slug</label>
+                    <div class="slug-input-wrapper">
+                        <span class="slug-prefix">{{ request.host }}/</span>
+                        <input type="text" name="custom_domain" id="editSlug" class="form-control slug-input"
+                               pattern="[a-zA-Z0-9_-]+" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label>Destination URL</label>
+                    <input type="text" name="target_url" id="editTarget" class="form-control" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                    <button type="button" onclick="closeEdit()" class="btn btn-secondary">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-    function copyToClipboard(text) {
+    function copyToClipboard(text, btn) {
         navigator.clipboard.writeText(text).then(function() {
-            alert('Copied to clipboard!');
-        }, function(err) {
-            console.error('Could not copy text: ', err);
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-copy');
+            setTimeout(function() {
+                btn.innerHTML = original;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-copy');
+            }, 2000);
         });
     }
+
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-edit');
+        if (btn) {
+            document.getElementById('editSlug').value = btn.dataset.slug;
+            document.getElementById('editTarget').value = btn.dataset.target;
+            document.getElementById('editForm').action = '/admin/edit/' + btn.dataset.id;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+    });
+
+    function closeEdit() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEdit();
+    });
     </script>
 </body>
 </html>

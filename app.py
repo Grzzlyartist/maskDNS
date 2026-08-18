@@ -167,6 +167,33 @@ def add_mapping():
     except sqlite3.IntegrityError:
         return jsonify({'success': False, 'error': 'Domain already exists'}), 400
 
+@app.route('/admin/edit/<int:mapping_id>', methods=['POST'])
+@login_required
+def edit_mapping(mapping_id):
+    """Edit an existing mapping"""
+    custom_domain = request.form.get('custom_domain', '').strip()
+    target_url = request.form.get('target_url', '').strip()
+
+    if not custom_domain or not target_url:
+        return redirect(url_for('admin_panel'))
+
+    custom_domain = clean_domain(custom_domain)
+
+    if not target_url.startswith(('http://', 'https://')):
+        target_url = 'https://' + target_url
+
+    if not validate_url(target_url):
+        return redirect(url_for('admin_panel'))
+
+    conn = get_db()
+    conn.execute(
+        'UPDATE domain_mappings SET custom_domain = ?, target_url = ? WHERE id = ?',
+        (custom_domain, target_url, mapping_id)
+    )
+    conn.commit()
+    conn.close()
+    return redirect(url_for('admin_panel'))
+
 @app.route('/admin/delete/<int:mapping_id>', methods=['POST'])
 @login_required
 def delete_mapping(mapping_id):
@@ -285,81 +312,25 @@ def masked_proxy(masked_id, subpath=''):
 @app.route('/<path:path>')
 @app.route('/proxy', defaults={'path': ''})
 def proxy_handler(path):
-    """Main proxy handler - fetches content from target URL (DNS-based)"""
-    host = request.headers.get('Host', request.host).split(':')[0]
-    
-    # Look up domain mapping
+    """Slug-based redirect handler - redirects to target URL"""
+    # Ignore static/internal paths
+    if path.startswith(('admin', 'static', 'm/', 'stats', 'proxy')):
+        return render_template('error.html', message='Page not found'), 404
+
+    slug = path.split('/')[0]
+
     conn = get_db()
     mapping = conn.execute(
         'SELECT * FROM domain_mappings WHERE custom_domain = ? AND is_active = 1',
-        (host,)
+        (slug,)
     ).fetchone()
     conn.close()
-    
+
     if not mapping:
-        return render_template('not_configured.html', domain=host), 404
-    
-    # Track click
+        return render_template('not_configured.html', domain=slug), 404
+
     track_click(mapping['id'])
-    
-    # Build target URL
-    target_url = mapping['target_url'].rstrip('/')
-    if path:
-        target_url = f"{target_url}/{path}"
-    
-    # Add query parameters
-    if request.query_string:
-        target_url = f"{target_url}?{request.query_string.decode()}"
-    
-    try:
-        # Prepare headers
-        headers = {
-            'User-Agent': request.headers.get('User-Agent', 'MaskDNS/1.0'),
-            'Accept': request.headers.get('Accept', '*/*'),
-            'Accept-Language': request.headers.get('Accept-Language', 'en-US,en;q=0.9'),
-        }
-        
-        # Fetch content from target
-        response = requests.request(
-            method=request.method,
-            url=target_url,
-            headers=headers,
-            data=request.get_data(),
-            cookies=request.cookies,
-            allow_redirects=False,
-            timeout=app.config['TIMEOUT'],
-            stream=True
-        )
-        
-        # Handle redirects
-        if response.status_code in [301, 302, 303, 307, 308]:
-            location = response.headers.get('Location', '')
-            if location.startswith('/'):
-                # Relative redirect - keep on our domain
-                return redirect(location, code=response.status_code)
-            else:
-                # Absolute redirect - proxy it
-                return redirect(location, code=response.status_code)
-        
-        # Build response
-        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
-        response_headers = [
-            (name, value) for (name, value) in response.raw.headers.items()
-            if name.lower() not in excluded_headers
-        ]
-        
-        return Response(
-            response.content,
-            status=response.status_code,
-            headers=response_headers
-        )
-        
-    except requests.exceptions.Timeout:
-        return render_template('error.html', message='Target URL timeout'), 504
-    except requests.exceptions.RequestException as e:
-        return render_template('error.html', message=f'Error fetching target: {str(e)}'), 502
-    except Exception as e:
-        return render_template('error.html', message='Internal server error'), 500
+    return redirect(mapping['target_url'], code=302)
 
 @app.errorhandler(404)
 def not_found(e):
